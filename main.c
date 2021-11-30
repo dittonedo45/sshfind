@@ -6,10 +6,9 @@
 #include <netdb.h>
 #include <jansson.h>
 
-static void dir(char *path, LIBSSH2_SFTP * ffp)
+static json_t *dir(char *path, LIBSSH2_SFTP * ffp)
 {
     json_t *a = json_array();
-
     do {
 	LIBSSH2_SFTP_HANDLE *fp = libssh2_sftp_opendir(ffp, path);
 	if (!fp)
@@ -27,21 +26,49 @@ static void dir(char *path, LIBSSH2_SFTP * ffp)
 		    LIBSSH2_SFTP_STATVFS st;
 		    libssh2_sftp_statvfs(ffp, rp, strlen(rp), &st);
 		}
+		json_t *b = json_object();
 		if (att.permissions & LIBSSH2_SFTP_S_IFDIR
-		    && strncmp("..", ent, strlen(ent)))
-		    json_array_append(a, json_string(rp));
-		puts(rp);
+		    && strncmp("..", ent, strlen(ent))) {
+		    json_object_set(b, "type_dir?", json_true());
+		} else if (strncmp("..", ent, strlen(ent))) {
+		    json_object_set(b, "type_dir?", json_false());
+		}
+		json_object_set(b, "file", json_string(rp));
+
+		json_array_append(a, b);
 	    };
-	} while (0);
+	}
+	while (0);
 	libssh2_sftp_closedir(fp);
     } while (0);
+
+    return a;
+}
+
+void sf_iter(char *path, LIBSSH2_SFTP * h, int level)
+{
+    json_t *res = dir(path, h);
+    int index;
+    json_t *element;
+
+    json_array_foreach(res, index, element)
+	// For Loop, of Results
     {
-	int i;
-	json_t *e;
-	json_array_foreach(a, i, e)
-	    //
-	{
-	    dir(json_string_value(e), ffp);
+	json_t *type = json_object_get(element, "type_dir?");
+	json_t *path = json_object_get(element, "file");
+	char *fpath = json_string_value(path);
+	char *pp = strrchr(fpath, '/');
+	if (pp && ++pp && strncmp("..", pp, strlen(pp))) {
+	    for (int i = level; i; i--) {
+		if (1 == i)
+		    putchar('=');
+		else
+		    putchar('|');
+	    }
+	    puts(pp);
+	}
+	if (json_boolean_value(type) == 1) {
+	    sf_iter(fpath, h, level + 1);
 	}
     }
 }
@@ -52,9 +79,10 @@ char **args, **env;
 {
     struct addrinfo h, *r, *p;
     char *host = 0;
-    char *port = 0;
-    char *user = 0;
-    char *password = 0;
+    char *port = "9000";
+    char *user = "kk";
+    char *path = "/";
+    char *password = "node";
 
     int sfd = -1;
 
@@ -95,7 +123,8 @@ char **args, **env;
 		LIBSSH2_SFTP *ffp = libssh2_sftp_init(session);
 		if (!ffp)
 		    break;
-		dir("/", ffp);
+
+		sf_iter(path, ffp, 2);
 		libssh2_sftp_shutdown(ffp);
 	    } while (0);
 	    libssh2_session_disconnect(session, 0);

@@ -78,11 +78,11 @@ int argsc;
 char **args, **env;
 {
     struct addrinfo h, *r, *p;
-    char *host = 0;
-    char *port = "9000";
-    char *user = "kk";
+    char *host = "hostname";
+    char *port = "22";
+    char *user = "user";
     char *path = "/";
-    char *password = "node";
+    char *password = "password";
 
     int sfd = -1;
 

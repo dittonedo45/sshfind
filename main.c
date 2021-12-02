@@ -5,8 +5,28 @@
 #include <libssh2_sftp.h>
 #include <netdb.h>
 #include <jansson.h>
+#include <getopt.h>
 
-static json_t *dir(char *path, LIBSSH2_SFTP * ffp)
+typedef
+    enum {
+    SF_NONE = 0,
+    SF_TREE,
+    SF_PROPER
+} sf_PRINT_t;
+
+struct sf_PRINT_st {
+    char *name;
+    sf_PRINT_t type;
+} sf_main_types[] = {
+    { "tree", SF_TREE },
+    { "proper", SF_PROPER },
+    { "none", SF_NONE },
+    { NULL, -1 }
+};
+
+extern char *av_append_path_component(char *, char *);
+
+static json_t *sf_dir(char *path, LIBSSH2_SFTP * ffp)
 {
     json_t *a = json_array();
     do {
@@ -45,9 +65,9 @@ static json_t *dir(char *path, LIBSSH2_SFTP * ffp)
     return a;
 }
 
-void sf_iter(char *path, LIBSSH2_SFTP * h, int level)
+void sf_iter(char *path, LIBSSH2_SFTP * h, int level, int type_i)
 {
-    json_t *res = dir(path, h);
+    json_t *res = sf_dir(path, h);
     int index;
     json_t *element;
 
@@ -56,34 +76,113 @@ void sf_iter(char *path, LIBSSH2_SFTP * h, int level)
     {
 	json_t *type = json_object_get(element, "type_dir?");
 	json_t *path = json_object_get(element, "file");
-	char *fpath = json_string_value(path);
-	char *pp = strrchr(fpath, '/');
-	if (pp && ++pp && strncmp("..", pp, strlen(pp))) {
-	    for (int i = level; i; i--) {
-		if (1 == i)
-		    putchar('=');
-		else
-		    putchar('|');
-	    }
-	    puts(pp);
+	const char *fpath = json_string_value(path);
+	switch (type_i) {
+	case SF_TREE:
+	    {
+		char *pp = strrchr(fpath, '/');
+		if (pp && ++pp && strncmp("..", pp, strlen(pp))) {
+		    for (int i = level; i; i--) {
+			if (1 == i)
+			    putchar('=');
+			else
+			    putchar('|');
+		    }
+		    puts(pp);
+		}
+	    };
+	    break;
+	case SF_PROPER:
+	default:
+	    puts(fpath);
+	    break;
 	}
 	if (json_boolean_value(type) == 1) {
-	    sf_iter(fpath, h, level + 1);
+	    sf_iter((char *) fpath, h, level + 1, type_i);
 	}
     }
 }
+
 
 int main(argsc, args, env)
 int argsc;
 char **args, **env;
 {
     struct addrinfo h, *r, *p;
-    char *host = "hostname";
+    char *host = NULL;
     char *port = "22";
-    char *user = "user";
-    char *path = "/";
-    char *password = "password";
+    char *user = NULL;
+    char *path = ".";
+    char *password = NULL;
+    char *type = 0;
 
+    struct option mylop[] = {
+	{ "help", 0, 0, 'h' },
+	{ "user", 1, 0, 'u' },
+	{ "password", 1, 0, 'k' },
+	{ "path", 1, 0, 'p' },
+	{ "port", 1, 0, 'P' },
+	{ "host", 1, 0, 'H' },
+	{ "type", 1, 0, 't' },
+	{.name = NULL }
+    };
+
+    int ret = 0;
+
+    do {
+	ret = getopt_long(argsc, args, "hu:p:P:H:k:t:", mylop, 0);
+	if (ret == -1)
+	    break;
+	switch (ret) {
+	case 'h':
+	    fprintf(stderr, "%s <options> <arguments>?\n", *args);
+	    fprintf(stderr,
+		    "A tool for printing a the remote filesystem.\n");
+	    {
+		struct option *p = mylop;
+		while (p && p->name) {
+		    fprintf(stderr, "\toption --%s or -%c %s\n", p->name,
+			    p->val, p->has_arg ? "<arg>" : "");
+		}
+		fprintf(stderr,
+			"Program: Created by dittonedo45@gmail.com\n");
+	    }
+	    exit(1);		// In case -h was include by mistake.
+	case 'H':
+	    host = strdup(optarg);
+	    break;
+	case 'k':
+	    password = strdup(optarg);
+	    break;
+	case 'p':
+	    path = strdup(optarg);
+	    break;
+	case 'P':
+	    port = strdup(optarg);
+	    break;
+	case 'u':
+	    user = strdup(optarg);
+	    break;
+	case 't':
+	    type = strdup(optarg);
+	    break;
+	};
+    } while (1);
+    if (!password || !user) {
+	fprintf(stderr, "--user and --password are mandatory.\n");
+	return 1;
+    }
+    int type_i = SF_PROPER;
+    if (type) {
+	struct sf_PRINT_st *p = sf_main_types;
+	while (p && p->name) {
+	    if (!strncmp(type, p->name, strlen(type))) {
+		type_i = p->type;
+		break;
+	    }
+	    p++;
+	}
+    }
     int sfd = -1;
 
     memset(&h, 0, sizeof(h));
@@ -124,7 +223,7 @@ char **args, **env;
 		if (!ffp)
 		    break;
 
-		sf_iter(path, ffp, 2);
+		sf_iter(path, ffp, 2, type_i);
 		libssh2_sftp_shutdown(ffp);
 	    } while (0);
 	    libssh2_session_disconnect(session, 0);

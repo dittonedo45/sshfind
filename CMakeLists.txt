@@ -3,4 +3,4 @@ cmake_minimum_required(VERSION 3.10)
 	option(MYCOMPDIR "Compile dnwiki" ON)
 	add_executable(sshfind main.c)
 
-	target_link_libraries(sshfind PUBLIC " -latomic -ljansson -lssh2 -lavutil")
+	target_link_libraries(sshfind PUBLIC "-latomic -ljansson -lssh2 -lavutil")

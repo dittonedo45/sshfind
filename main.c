@@ -170,6 +170,7 @@ char **args, **env;
     } while (1);
     if (!password || !user) {
 	fprintf(stderr, "--user and --password are mandatory.\n");
+
 	return 1;
     }
     int type_i = SF_PROPER;

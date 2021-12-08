@@ -84,9 +84,9 @@ void sf_iter(char *path, LIBSSH2_SFTP * h, int level, int type_i)
 		if (pp && ++pp && strncmp("..", pp, strlen(pp))) {
 		    for (int i = level; i; i--) {
 			if (1 == i)
-			    putchar('=');
+			    fputs("\xe2\x94\x9c\xe2\x94\x80\xe2\x94\x80 ", stdout);	// "├── "
 			else
-			    putchar('|');
+			    fputs("\xe2\x94\x82   ", stdout);	// "│   "
 		    }
 		    puts(pp);
 		}

@@ -1,0 +1,26 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/data/data/com.termux/files/home/mypc/sshfind/main.c
+stdio.h
+-
+string.h
+-
+stdlib.h
+-
+libssh2.h
+-
+libssh2_sftp.h
+-
+netdb.h
+-
+jansson.h
+-
+getopt.h
+-
+

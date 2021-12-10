@@ -1,0 +1,1 @@
+/data/data/com.termux/files/usr/bin/cc    CMakeFiles/sshfind.dir/main.c.o  -o sshfind -latomic -ljansson -lssh2 -lavutil 

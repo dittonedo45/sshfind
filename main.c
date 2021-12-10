@@ -119,7 +119,7 @@ char **args, **env;
     struct option mylop[] = {
 	{ "help", 0, 0, 'h' },
 	{ "user", 1, 0, 'u' },
-	{ "password", 1, 0, 'k' },
+	{ "password", 1, 0, 'k' }, // I dont know way but this seems unsafe, XXX
 	{ "path", 1, 0, 'p' },
 	{ "port", 1, 0, 'P' },
 	{ "host", 1, 0, 'H' },
